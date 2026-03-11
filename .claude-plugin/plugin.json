@@ -3,9 +3,11 @@
   "description": "Enforces cross-platform rules so your code runs on both web (Next.js) and native (React Native / Expo) from a single shared codebase. Rules are always active — applied automatically on every file you create or modify.",
   "version": "1.0.0",
   "author": {
-    "name": "uni-bridge",
-    "email": ""
+    "name": "monu-daffodilsw",
+    "email": "monu@daffodilsw.com"
   },
+  "homepage": "https://github.com/monu-daffodilsw/uni-bridge",
+  "repository": "https://github.com/monu-daffodilsw/uni-bridge",
   "license": "MIT",
   "keywords": [
     "react-native",

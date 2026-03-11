@@ -16,7 +16,7 @@ Rules are always active — applied automatically on every file you create or mo
     "uni-bridge": {
       "source": {
         "source": "git",
-        "url": "https://github.com/YOUR_USERNAME/uni-bridge.git"
+        "url": "https://github.com/monu-daffodilsw/uni-bridge.git"
       }
     }
   }
