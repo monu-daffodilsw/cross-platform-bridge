@@ -18,11 +18,5 @@
     "universal",
     "platform-split",
     "ui-library"
-  ],
-  "skills": [
-    {
-      "name": "uni-bridge",
-      "path": "skills/uni-bridge"
-    }
   ]
 }
