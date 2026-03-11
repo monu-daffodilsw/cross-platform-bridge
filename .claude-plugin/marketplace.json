@@ -1,0 +1,16 @@
+{
+  "name": "uni-bridge-marketplace",
+  "owner": {
+    "name": "uni-bridge",
+    "email": ""
+  },
+  "plugins": [
+    {
+      "name": "uni-bridge",
+      "source": "./",
+      "description": "Enforces cross-platform rules so your code runs on both web (Next.js) and native (React Native / Expo) from a single shared codebase.",
+      "version": "1.0.0",
+      "keywords": ["react-native", "nextjs", "expo", "cross-platform", "nativewind", "universal"]
+    }
+  ]
+}
