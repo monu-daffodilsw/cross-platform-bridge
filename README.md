@@ -8,10 +8,45 @@ Rules are always active — applied automatically on every file you create or mo
 
 ## Install
 
-**1. Add the marketplace** — in Claude Code settings (`~/.claude/settings.json`):
+### Option 1 — CLI commands (recommended)
+
+**Global install** (available in all projects):
+
+```bash
+# Step 1 — Register the marketplace (one-time per machine)
+claude plugin marketplace add https://github.com/monu-daffodilsw/uni-bridge.git
+
+# Step 2 — Install the plugin
+claude plugin install uni-bridge@uni-bridge
+```
+
+**Project-only install** (only active in the current project):
+
+```bash
+# Run from inside your project directory
+
+# Step 1 — Register the marketplace (one-time per machine)
+claude plugin marketplace add https://github.com/monu-daffodilsw/uni-bridge.git
+
+# Step 2 — Install scoped to this project only
+claude plugin install uni-bridge@uni-bridge --scope project
+```
+
+**Step 3 — Reopen Claude Code**
+
+Skills are cached at startup. Close and reopen Claude Code after installation.
+
+---
+
+### Option 2 — Manual settings
+
+**Global** — edit `~/.claude/settings.json`:
 
 ```json
 {
+  "enabledPlugins": {
+    "uni-bridge@uni-bridge": true
+  },
   "extraKnownMarketplaces": {
     "uni-bridge": {
       "source": {
@@ -23,11 +58,25 @@ Rules are always active — applied automatically on every file you create or mo
 }
 ```
 
-**2. Install the plugin:**
+**Project-only** — create `.claude/settings.json` in your project root:
 
+```json
+{
+  "enabledPlugins": {
+    "uni-bridge@uni-bridge": true
+  },
+  "extraKnownMarketplaces": {
+    "uni-bridge": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/monu-daffodilsw/uni-bridge.git"
+      }
+    }
+  }
+}
 ```
-/install-plugin uni-bridge@uni-bridge
-```
+
+Then reopen Claude Code.
 
 ---
 
