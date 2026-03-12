@@ -5,8 +5,60 @@ Follow these cross-platform rules for every file you create or modify. These rul
 Never apply these rules to:
 - `app/` — Next.js shell, web-only by design
 - `**/*.native.ts` / `**/*.native.tsx` — platform split files
-- `dependencies/ui-library/**` — library defines the primitives
 - `node_modules/**`
+
+## `dependencies/ui-library` Is Read-Only
+
+**Never create, edit, or delete any file inside `dependencies/ui-library` during migration or feature work.** If a primitive is missing or broken, stop and report it — do not fix it by modifying the library.
+
+---
+
+## 0. Required Setup — Do This Before Anything Else
+
+### babel.config.js
+`react-native-reanimated/plugin` must be the **last plugin** in `babel.config.js`. Missing this causes `makeMutable` to be undefined at runtime and crashes native.
+```js
+module.exports = {
+  presets: ['babel-preset-expo'],
+  plugins: [
+    'nativewind/babel',
+    'react-native-reanimated/plugin', // ← must be last
+  ],
+};
+```
+
+### metro.config.js
+```js
+const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
+
+const config = getDefaultConfig(__dirname);
+module.exports = withNativeWind(config, { input: './app/globals.css' });
+```
+
+### global.css
+Must be imported in the root `app/layout.tsx`:
+```tsx
+import './globals.css';
+```
+
+### app/[[...slug]]/page.tsx — Catch-All Route
+Delete all Next.js file-based routes except `app/layout.tsx` and `app/globals.css`. All routing is handled by `RouterProvider` through a single catch-all:
+```tsx
+import { RouterProvider } from '@ui-library/router';
+import { routes } from '@/router/routes';
+
+export default function Page({ params }: { params: { slug?: string[] } }) {
+  const initialPath = '/' + (params.slug?.join('/') ?? '');
+  return (
+    <RouterProvider routes={routes} initialPath={initialPath}>
+      {/* Nav + screen switcher here */}
+    </RouterProvider>
+  );
+}
+```
+
+`initialPath` prevents hydration mismatches on direct URL access. Never keep `app/page.tsx` or any other nested route files alongside this catch-all.
 
 ---
 
@@ -21,6 +73,7 @@ React Native has no DOM. HTML tags crash on native. Replace every HTML element w
 | `button` | `Pressable` |
 | `input`, `textarea` | `TextInput` |
 | `img` | `Image` |
+| `div` with `overflow-scroll` / `overflow-auto` | `ScrollView` |
 | `ul` / `ol` + `li` | `View` + mapped `View`s or `FlatList` |
 | `a` | `Link` from `@ui-library/router` |
 | `svg`, `path`, `circle` | `Svg`, `Path`, `Circle` from `@ui-library` |
@@ -43,10 +96,10 @@ When migrating `div` → `View`, apply this flex direction audit without excepti
 Only `.native.tsx` / `.native.ts` files may import from `react-native`, `react-native-svg`, `react-native-safe-area-context`, `@react-native-*`, or any react-native package. Every shared file imports from `@ui-library` instead.
 ```tsx
 // ❌
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 
 // ✅
-import { View, Text, Pressable } from '@ui-library';
+import { View, Text, Pressable, Platform } from '@ui-library';
 ```
 
 ---
@@ -60,15 +113,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useRouter } from 'expo-router';
 
-// ✅
+// ✅ in shared code
 import { useRouter, usePathname, useParams, Link } from '@ui-library/router';
-import { RouterProvider, useRouterContext, buildPath, matchPath } from '@ui-library/router';
-```
 
-`RouterProvider` requires a `routes` prop — always pass the project route definitions:
-```tsx
-import { routes } from '@/router/routes';
-<RouterProvider routes={routes}>{children}</RouterProvider>
+// app/-only — never in shared components
+import { RouterProvider, useRouterContext } from '@ui-library/router';
 ```
 
 Navigate by route name — never by path string:
@@ -117,18 +166,28 @@ const s = StyleSheet.create({ box: { flex: 1 } });
 // ✅
 <View className="flex-1 bg-white p-4">
 
-// ✅  dynamic value — inline style is correct
+// ✅ dynamic value — inline style is correct
 <View style={{ width: calculatedWidth, backgroundColor: userColor }}>
 ```
 
-**Design tokens:**
-- Background: `bg-[#0a0f1e]`
-- Accent: `text-[#6366f1]` / `bg-[#6366f1]`
-- Success: `text-[#10b981]`
-- Warning: `text-[#f59e0b]`
-- Glass: `bg-white/5 border border-white/10 backdrop-blur`
-- Headings: `font-space-mono`
-- Body: `font-dm-sans`
+### Web-Only Classes — Always Prefix with `web:`
+
+These classes have no native equivalent. NativeWind v4 routes `transition-*` through Reanimated's `makeMutable` — without the `web:` prefix they crash native. Always guard them:
+```tsx
+// ❌
+<View className="transition-colors hover:text-primary focus-visible:ring-2 group-hover:opacity-80">
+
+// ✅
+<View className="web:transition-colors web:hover:text-primary web:focus-visible:ring-2 web:group-hover:opacity-80">
+```
+
+| Must prefix with `web:` |
+|---|
+| `transition-*` |
+| `hover:*` |
+| `group-hover:*` |
+| `focus-visible:*` |
+| `animate-*` |
 
 ---
 
@@ -148,7 +207,7 @@ Create a `.native.` split only when the entire implementation differs — differ
 **Anchor file** (TypeScript stub, never bundled at runtime):
 ```ts
 // hooks/useClipboard.ts
-export { useClipboard } from './useClipboard.web';
+export { useClipboard } from './useClipboard';
 ```
 
 ---
@@ -173,7 +232,6 @@ export { useClipboard } from './useClipboard.web';
 ## 9. Storage
 
 All storage reads and writes use `Storage` from `@ui-library`. Never call `localStorage`, `sessionStorage`, or `AsyncStorage` directly — the library provides the platform abstraction.
-
 ```ts
 // ❌
 localStorage.setItem('key', value);
@@ -186,8 +244,6 @@ await Storage.getItem('key');
 await Storage.removeItem('key');
 ```
 
-The library's `Storage` handles web (localStorage) and native (AsyncStorage) automatically — no platform split needed in the calling code.
-
 ---
 
 ## 10. Library (`dependencies/ui-library`)
@@ -199,7 +255,7 @@ The library's `Storage` handles web (localStorage) and native (AsyncStorage) aut
 
 ---
 
-## 10. Error Handling
+## 11. Error Handling
 
 No empty catch blocks. Every `catch` must contain at least one statement — a log, a fallback, a state update, or a rethrow.
 ```ts
@@ -216,14 +272,14 @@ try {
 
 ---
 
-## 11. File Structure
+## 12. File Structure
 
 File structure varies per project. Always read the existing project structure before creating or moving files — do not assume any specific folder layout.
 
 The only guaranteed constant across all projects is:
 ```
 dependencies/
-  ui-library/      ← standalone shared library, never modified per project
+  ui-library/      ← read-only, never modified per project
 ```
 
 Shared code never lives in `app/`. Platform split files always live next to their shared counterpart.
@@ -232,18 +288,27 @@ Shared code never lives in `app/`. Platform split files always live next to thei
 
 ## Self-check Before Writing Any File
 
+- [ ] `dependencies/ui-library` not touched — zero files created, edited, or deleted inside it
+- [ ] `babel.config.js` has `react-native-reanimated/plugin` as the last plugin
+- [ ] `metro.config.js` has `withNativeWind` configured
+- [ ] `globals.css` imported in `app/layout.tsx`
+- [ ] All Next.js file-based routes removed — single `app/[[...slug]]/page.tsx` catch-all with `RouterProvider` and `initialPath`
 - [ ] No HTML tags — using `View`, `Text`, `Pressable`, `Image` from `@ui-library`
 - [ ] Every `div` with `flex` class audited for flex direction mismatch
 - [ ] `flex` only (no direction) → `flex-row` added to View
 - [ ] `flex flex-col` → `flex-col` removed from View
+- [ ] `overflow-scroll` / `overflow-auto` divs → `ScrollView`
 - [ ] No `import ... from 'react-native'` in a non-`.native.` file
+- [ ] `Platform` imported from `@ui-library` not `react-native`
 - [ ] No `next/navigation`, `next/link`, or `expo-router` outside `app/`
 - [ ] Navigation uses `@ui-library/router` — `useRouter`, `usePathname`, `useParams`, `Link`
+- [ ] Navigation uses route names, never path strings
+- [ ] `RouterProvider` and `useRouterContext` only in `app/`
 - [ ] No `.css` imports in shared code
 - [ ] Every JSX string inside `<Text>`
 - [ ] No `StyleSheet.create` — using `className`
 - [ ] No static `style={{ }}` — using `className`
-- [ ] Navigation uses route names, never path strings
+- [ ] `transition-*`, `hover:*`, `group-hover:*`, `focus-visible:*`, `animate-*` prefixed with `web:`
 - [ ] Storage uses `Storage` from `@ui-library` — no direct `localStorage` or `AsyncStorage`
 - [ ] No empty `catch {}` blocks
 - [ ] If 3+ `Platform.OS` checks needed → create a `.native.` split
