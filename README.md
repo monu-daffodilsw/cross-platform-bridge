@@ -109,29 +109,55 @@ Then reopen Claude Code.
 
 ## Converting a Next.js Project to Cross-Platform
 
-Install the plugin first, then paste each phase prompt into Claude Code one at a time. Verify before moving to the next phase.
+Install the plugin first. Then paste each phase prompt into Claude Code **one at a time**. Verify it passes before moving to the next phase.
 
 ---
 
-### Phase 1 — Foundation
+### Phase 1 — Router
 
-> Set up Expo and React Native in this Next.js project so it runs on both web and native. Install all required dependencies, configure Metro and Babel, build the ui-library primitives and router, set up NativeWind. Do not change any existing dependencies or break the current web setup. Stop when done and wait for confirmation before Phase 2.
->
-> **Verify:** `npx next build` passes with zero errors.
+Replace all Next.js file-based routing with `@ui-library/router`. Keeps the web app running exactly as before — just changes how routing works internally.
 
----
+**Paste into Claude Code:**
 
-### Phase 2 — Migrate
+> Phase 1 — Router. Read the project structure first. Replace all Next.js file-based routing with `@ui-library/router`. Keep only `app/layout.tsx` and `app/globals.css` — delete all other files inside `app/`. Create a single `app/[[...slug]]/page.tsx` catch-all. Create `router/routes.ts` with all existing routes. Replace every routing import from `next/navigation` and `next/link` across all components and hooks. Do not change any UI, styles, or dependencies. Stop when done and wait for confirmation before Phase 2.
 
-> Migrate all existing shared components and hooks to be cross-platform. Read the project structure first. Replace HTML elements, fix flex direction, wrap bare strings in Text, replace StyleSheet and static style objects with className, replace all routing imports with @ui-library/router, replace react-native imports with @ui-library, replace direct storage calls with Storage from @ui-library, split any hooks that use browser APIs. Stop when done and wait for confirmation before Phase 3.
->
-> **Verify:** `npx tsc --noEmit` passes with zero errors.
+**Verify:** `npx next build` passes and all pages open correctly in the browser.
 
 ---
 
-### Phase 3 — Verify
+### Phase 2 — Primitives
 
-> Run `npx next build` and confirm zero errors. Run `npx expo start` and confirm zero Metro errors. Fix anything remaining. Report what was completed and what needs attention.
+Replace all HTML elements with `@ui-library` components and fix all class names to be NativeWind-compatible. After this phase the codebase is cross-platform ready.
+
+**Paste into Claude Code:**
+
+> Phase 2 — Primitives. Phase 1 is complete — routing is already migrated to `@ui-library/router`. Read the project structure first. Replace every HTML element in shared components with the `@ui-library` equivalent. Audit flex direction on every `div`→`View` migration. Wrap every bare JSX string in `<Text>`. Remove all `StyleSheet.create` and static `style={{ }}` objects — use `className` instead. Prefix web-only classes with `web:`. Replace all direct `localStorage` and `AsyncStorage` calls with `Storage` from `@ui-library`. Do not touch `app/` or any `.native.tsx` file. Stop when done and wait for confirmation before Phase 3.
+
+**Verify:** `npx tsc --noEmit` passes with zero errors.
+
+---
+
+### Phase 3 — Expo
+
+Install Expo and React Native, configure the native bundler, and create platform splits for any hooks that use browser-only APIs. After this phase the app runs on both web and native.
+
+**Paste into Claude Code:**
+
+> Phase 3 — Expo. Phases 1 and 2 are complete — routing is migrated and all components use `@ui-library` primitives. Read the project structure first. Install Expo and all required React Native dependencies. Configure `babel.config.js` and `metro.config.js` for NativeWind. Confirm `globals.css` is imported in `app/layout.tsx`. Create `.native.ts` splits for any hook that uses browser-only APIs. Do not change any component logic or styles. Stop when done and wait for confirmation before Phase 4.
+
+**Verify:** `npx expo start` runs with zero Metro errors and the UI renders correctly on device or simulator.
+
+---
+
+### Phase 4 — Audit
+
+Scan the entire codebase for anything missed in the previous phases and fix it. This is the final check before the project is fully cross-platform.
+
+**Paste into Claude Code:**
+
+> Phase 4 — Audit. Phases 1, 2, and 3 are complete. Read the entire project structure. Check every shared file against the cross-platform rules enforced by the uni-bridge plugin. Find and fix anything that was missed — HTML elements, wrong imports, bare strings, static styles, missing `web:` prefixes, direct storage calls, empty catch blocks, or anything else that would fail on native. Report every issue found and what was fixed. If everything is clean, confirm the project is fully cross-platform.
+
+**Verify:** `npx next build` passes. `npx expo start` passes. `npx tsc --noEmit` passes with zero errors.
 
 ---
 
