@@ -161,7 +161,7 @@ export { useClipboard } from './useClipboard.web';
 
 | Hook touches | Needs split |
 |---|---|
-| `localStorage` / `sessionStorage` | Yes |
+| `Storage` from `@ui-library` | No — library handles platform internally |
 | `navigator.geolocation` | Yes |
 | `navigator.clipboard` | Yes |
 | `SpeechRecognition` | Yes |
@@ -170,13 +170,32 @@ export { useClipboard } from './useClipboard.web';
 
 ---
 
-## 9. Library (`dependencies/ui-library`)
+## 9. Storage
+
+All storage reads and writes use `Storage` from `@ui-library`. Never call `localStorage`, `sessionStorage`, or `AsyncStorage` directly — the library provides the platform abstraction.
+
+```ts
+// ❌
+localStorage.setItem('key', value);
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// ✅
+import { Storage } from '@ui-library';
+await Storage.setItem('key', value);
+await Storage.getItem('key');
+await Storage.removeItem('key');
+```
+
+The library's `Storage` handles web (localStorage) and native (AsyncStorage) automatically — no platform split needed in the calling code.
+
+---
+
+## 10. Library (`dependencies/ui-library`)
 
 - Zero project-specific logic — no hardcoded routes, data, or business logic
 - Zero project-specific imports — never `@/` or `~/`
 - Everything the library needs from the project comes through props or configuration
-- Provides: UI primitives, `@ui-library/router`, and `Platform` (same API as React Native's `Platform`)
-- Does **not** provide storage abstraction — storage lives in the project's `services/` layer only
+- Provides: UI primitives, `@ui-library/router`, `Platform`, and `Storage`
 
 ---
 
@@ -225,5 +244,6 @@ Shared code never lives in `app/`. Platform split files always live next to thei
 - [ ] No `StyleSheet.create` — using `className`
 - [ ] No static `style={{ }}` — using `className`
 - [ ] Navigation uses route names, never path strings
+- [ ] Storage uses `Storage` from `@ui-library` — no direct `localStorage` or `AsyncStorage`
 - [ ] No empty `catch {}` blocks
 - [ ] If 3+ `Platform.OS` checks needed → create a `.native.` split
