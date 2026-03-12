@@ -23,15 +23,24 @@ React Native has no DOM. HTML tags crash on native. Replace every HTML element w
 | `img` | `Image` |
 | `ul` / `ol` + `li` | `View` + mapped `View`s or `FlatList` |
 | `a` | `Link` from `@ui-library/router` |
-| `svg`, `path`, `circle`, `rect` | `Svg`, `Path`, `Circle`, `Rect` from `@ui-library` |
+| `svg`, `path`, `circle` | `Svg`, `Path`, `Circle` from `@ui-library` |
 | `select` | platform-split or `@ui-library` picker |
+
+When migrating `div` → `View`, apply this flex direction audit without exception:
+
+| div className | Action on View |
+|---|---|
+| No `flex` class at all | No change — block/column behavior matches RN default |
+| `flex` but no `flex-row` or `flex-col` | **Add `flex-row`** — web flex defaults to row, must be explicit on View |
+| `flex flex-col` | Use `flex` only, **remove `flex-col`** — redundant, RN default is already column |
+| `flex flex-row` | Keep as-is |
+| `flex flex-col` + other classes | Keep all other classes, **remove only `flex-col`** |
 
 ---
 
 ## 2. No Direct React Native Imports in Shared Code
 
 Only `.native.tsx` / `.native.ts` files may import from `react-native`, `react-native-svg`, `react-native-safe-area-context`, `@react-native-*`, or any react-native package. Every shared file imports from `@ui-library` instead.
-
 ```tsx
 // ❌
 import { View, Text, TouchableOpacity } from 'react-native';
@@ -44,17 +53,28 @@ import { View, Text, Pressable } from '@ui-library';
 
 ## 3. No next/navigation, next/link, or expo-router in Shared Code
 
-All navigation goes through `@ui-library/router`. The only exception is `router/context.*` which wraps Next.js internally.
-
+All navigation goes through `@ui-library/router`. The only exception is `app/` which wires up the `RouterProvider` internally.
 ```tsx
 // ❌
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useRouter } from 'expo-router';
 
 // ✅
-import { useRouter, Link } from '@ui-library/router';
+import { useRouter, usePathname, useParams, Link } from '@ui-library/router';
+import { RouterProvider, useRouterContext, buildPath, matchPath } from '@ui-library/router';
+```
 
-// Navigate by route name — never by path string
+`RouterProvider` requires a `routes` prop — always pass the project route definitions:
+```tsx
+import { routes } from '@/router/routes';
+<RouterProvider routes={routes}>{children}</RouterProvider>
+```
+
+Navigate by route name — never by path string:
+```tsx
+const router = useRouter();
+
 router.navigate('projectBoard', { id });   // ✅
 router.push('/projects/123');              // ❌
 ```
@@ -70,7 +90,6 @@ CSS does not exist in React Native. NativeWind translates `className` to native 
 ## 5. Strings in JSX Must Be Inside `<Text>`
 
 React Native crashes when a bare string appears directly inside a `View` or any non-text container. Web silently allows it — enforce the stricter native rule everywhere.
-
 ```tsx
 // ❌
 <View>Hello world</View>
@@ -90,7 +109,6 @@ NativeWind translates Tailwind utility classes to native styles on native and to
 **No `StyleSheet.create`** — it does not exist on web.
 
 **No static inline style objects** — a style prop whose every value is a static literal should be `className` instead. Inline `style` props are only for values computed at runtime.
-
 ```tsx
 // ❌
 const s = StyleSheet.create({ box: { flex: 1 } });
@@ -157,67 +175,36 @@ export { useClipboard } from './useClipboard.web';
 - Zero project-specific logic — no hardcoded routes, data, or business logic
 - Zero project-specific imports — never `@/` or `~/`
 - Everything the library needs from the project comes through props or configuration
+- Provides: UI primitives, `@ui-library/router`, and `Platform` (same API as React Native's `Platform`)
+- Does **not** provide storage abstraction — storage lives in the project's `services/` layer only
 
 ---
 
-## 10. Storage
-
-All storage reads and writes go through `@/services`. No direct `localStorage`, `sessionStorage`, or `AsyncStorage` calls outside the service layer.
-
-```ts
-// ❌ anywhere outside services/
-localStorage.setItem('key', value);
-
-// ✅
-import { storage } from '@/services/localStorage';
-storage.set('key', value);
-```
-
-Services have two implementations:
-- `services/foo.ts` — web, uses `localStorage`
-- `services/foo.native.ts` — native, uses `AsyncStorage`
-
-Mock data (`@/utils/mockData`) is only for hook initialization — hooks seed storage on first load. Components never import mock data.
-
----
-
-## 11. Error Handling
+## 10. Error Handling
 
 No empty catch blocks. Every `catch` must contain at least one statement — a log, a fallback, a state update, or a rethrow.
-
 ```ts
 // ❌
-try { storage.set(key, val); } catch (e) {}
+try { doSomething(); } catch (e) {}
 
 // ✅
 try {
-  storage.set(key, val);
+  doSomething();
 } catch (e) {
-  console.error('Storage write failed:', e);
+  console.error('Failed:', e);
 }
 ```
 
 ---
 
-## 12. File Structure
+## 11. File Structure
 
+File structure varies per project. Always read the existing project structure before creating or moving files — do not assume any specific folder layout.
+
+The only guaranteed constant across all projects is:
 ```
-app/               ← thin Next.js wrappers only, no shared logic
-components/
-  pages/           ← page components
-  layouts/         ← AppLayout, Sidebar, Navbar
-  cards/           ← widget and card components
-  lists/           ← list and column components
-  forms/           ← form components
-  modals/          ← modal components
-  ui/              ← Button, Input, Badge, Modal, Toast, Avatar
-hooks/             ← useAuth, useTasks, useProjects, useNotifications…
-services/          ← localStorage.ts + *.native.ts storage services
-router/            ← routes.ts, context.tsx, hooks.ts, Link.tsx
-utils/             ← utils.ts, mockData.ts
-types/             ← index.ts — all TypeScript types
 dependencies/
-  ui-library/      ← standalone shared library
+  ui-library/      ← standalone shared library, never modified per project
 ```
 
 Shared code never lives in `app/`. Platform split files always live next to their shared counterpart.
@@ -227,14 +214,16 @@ Shared code never lives in `app/`. Platform split files always live next to thei
 ## Self-check Before Writing Any File
 
 - [ ] No HTML tags — using `View`, `Text`, `Pressable`, `Image` from `@ui-library`
+- [ ] Every `div` with `flex` class audited for flex direction mismatch
+- [ ] `flex` only (no direction) → `flex-row` added to View
+- [ ] `flex flex-col` → `flex-col` removed from View
 - [ ] No `import ... from 'react-native'` in a non-`.native.` file
-- [ ] No `next/navigation`, `next/link`, or `expo-router` outside `app/` and `router/context`
+- [ ] No `next/navigation`, `next/link`, or `expo-router` outside `app/`
+- [ ] Navigation uses `@ui-library/router` — `useRouter`, `usePathname`, `useParams`, `Link`
 - [ ] No `.css` imports in shared code
 - [ ] Every JSX string inside `<Text>`
 - [ ] No `StyleSheet.create` — using `className`
 - [ ] No static `style={{ }}` — using `className`
 - [ ] Navigation uses route names, never path strings
-- [ ] Storage through `@/services`, never direct `localStorage`
-- [ ] No mock data in component files
 - [ ] No empty `catch {}` blocks
 - [ ] If 3+ `Platform.OS` checks needed → create a `.native.` split
