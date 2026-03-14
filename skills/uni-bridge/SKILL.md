@@ -15,9 +15,16 @@ Never apply these rules to:
 - `**/*.native.ts` / `**/*.native.tsx` — platform split files
 - `node_modules/**`
 
-## `dependencies/ui-library` Is Read-Only
+## `dependencies/ui-library` — Protected by Default
 
-**Never create, edit, or delete any file inside `dependencies/ui-library` during migration or feature work.** If a primitive is missing or broken, stop and report it — do not fix it by modifying the library.
+**Do not modify any file inside `dependencies/ui-library` unless the user explicitly asks to update the library.** During migration or feature work, treat it as read-only. If a primitive is missing or broken, stop and report it.
+
+**When the user explicitly asks to update the library:**
+- Read the existing code first — understand the current API, exports, and behavior before changing anything
+- Do not remove or rename existing exports — other files depend on them
+- Do not change existing prop interfaces — add new optional props instead of modifying existing ones
+- Do not add project-specific logic — the library stays generic
+- Test that existing imports still work after the change
 
 ---
 
@@ -266,10 +273,12 @@ await Storage.removeItem('key');
 
 ## 10. Library (`dependencies/ui-library`)
 
+- Only modify when the user explicitly asks to update the library
 - Zero project-specific logic — no hardcoded routes, data, or business logic
 - Zero project-specific imports — never `@/` or `~/`
 - Everything the library needs from the project comes through props or configuration
 - Provides: UI primitives, `@ui-library/router`, `Platform`, and `Storage`
+- When updating: preserve all existing exports and prop interfaces — add, don't replace
 
 ---
 
@@ -297,7 +306,7 @@ File structure varies per project. Always read the existing project structure be
 The only guaranteed constant across all projects is:
 ```
 dependencies/
-  ui-library/      ← read-only, never modified per project
+  ui-library/      ← protected, only modify when user explicitly asks
 ```
 
 Shared code never lives in `app/`. Platform split files always live next to their shared counterpart.
@@ -400,7 +409,7 @@ const res = await apiClient.get('/projects');
 
 ## Self-check Before Writing Any File
 
-- [ ] `dependencies/ui-library` not touched — zero files created, edited, or deleted inside it
+- [ ] `dependencies/ui-library` not modified unless the user explicitly asked — no removed exports, no changed prop interfaces
 - [ ] `babel.config.js` has `react-native-reanimated/plugin` as the last plugin
 - [ ] `metro.config.js` has `withNativeWind` configured
 - [ ] `globals.css` imported in `app/layout.tsx`
