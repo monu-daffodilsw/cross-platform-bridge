@@ -1,12 +1,12 @@
 {
-  "name": "uni-bridge",
+  "name": "cross-platform-bridge",
   "owner": {
-    "name": "uni-bridge",
+    "name": "cross-platform-bridge",
     "email": "monu@daffodilsw.com"
   },
   "plugins": [
     {
-      "name": "uni-bridge",
+      "name": "cross-platform-bridge",
       "source": "./",
       "description": "Enforces cross-platform rules so your code runs on both web (Next.js) and native (React Native / Expo) from a single shared codebase.",
       "version": "1.0.0",

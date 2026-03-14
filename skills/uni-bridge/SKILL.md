@@ -15,9 +15,9 @@ Never apply these rules to:
 - `**/*.native.ts` / `**/*.native.tsx` — platform split files
 - `node_modules/**`
 
-## `dependencies/ui-library` — Protected by Default
+## `dependencies/ultra-ui-library` — Protected by Default
 
-**Do not modify any file inside `dependencies/ui-library` unless the user explicitly asks to update the library.** During migration or feature work, treat it as read-only. If a primitive is missing or broken, stop and report it.
+**Do not modify any file inside `dependencies/ultra-ui-library` unless the user explicitly asks to update the library.** During migration or feature work, treat it as read-only. If a primitive is missing or broken, stop and report it.
 
 **When the user explicitly asks to update the library:**
 - Read the existing code first — understand the current API, exports, and behavior before changing anything
@@ -60,7 +60,7 @@ import './globals.css';
 ### app/[[...slug]]/page.tsx — Catch-All Route
 Delete all Next.js file-based routes except `app/layout.tsx` and `app/globals.css`. All routing is handled by `RouterProvider` through a single catch-all:
 ```tsx
-import { RouterProvider } from '@ui-library/router';
+import { RouterProvider } from '@ultra-ui-library/router';
 import { routes } from '@/router/routes';
 
 export default function Page({ params }: { params: { slug?: string[] } }) {
@@ -79,9 +79,9 @@ export default function Page({ params }: { params: { slug?: string[] } }) {
 
 ## 1. No HTML Elements in Shared Code
 
-React Native has no DOM. HTML tags crash on native. Replace every HTML element with the equivalent from `@ui-library`:
+React Native has no DOM. HTML tags crash on native. Replace every HTML element with the equivalent from `@ultra-ui-library`:
 
-| HTML | @ui-library |
+| HTML | @ultra-ui-library |
 |---|---|
 | `div`, `section`, `article`, `header`, `footer`, `main`, `nav` | `View` |
 | `p`, `span`, `h1`–`h6`, `strong`, `em`, `b`, `i`, `label` | `Text` |
@@ -90,9 +90,9 @@ React Native has no DOM. HTML tags crash on native. Replace every HTML element w
 | `img` | `Image` |
 | `div` with `overflow-scroll` / `overflow-auto` | `ScrollView` |
 | `ul` / `ol` + `li` | `View` + mapped `View`s or `FlatList` |
-| `a` | `Link` from `@ui-library/router` |
-| `svg`, `path`, `circle` | `Svg`, `Path`, `Circle` from `@ui-library` |
-| `select` | platform-split or `@ui-library` picker |
+| `a` | `Link` from `@ultra-ui-library/router` |
+| `svg`, `path`, `circle` | `Svg`, `Path`, `Circle` from `@ultra-ui-library` |
+| `select` | platform-split or `@ultra-ui-library` picker |
 
 ### Flex Direction — `View` Defaults to Column, Web Does Not
 
@@ -118,20 +118,20 @@ React Native has no DOM. HTML tags crash on native. Replace every HTML element w
 
 ## 2. No Direct React Native Imports in Shared Code
 
-Only `.native.tsx` / `.native.ts` files may import from `react-native`, `react-native-svg`, `react-native-safe-area-context`, `@react-native-*`, or any react-native package. Every shared file imports from `@ui-library` instead.
+Only `.native.tsx` / `.native.ts` files may import from `react-native`, `react-native-svg`, `react-native-safe-area-context`, `@react-native-*`, or any react-native package. Every shared file imports from `@ultra-ui-library` instead.
 ```tsx
 // ❌
 import { View, Text, TouchableOpacity, Platform } from 'react-native';
 
 // ✅
-import { View, Text, Pressable, Platform } from '@ui-library';
+import { View, Text, Pressable, Platform } from '@ultra-ui-library';
 ```
 
 ---
 
 ## 3. No next/navigation, next/link, or expo-router in Shared Code
 
-All navigation goes through `@ui-library/router`. The only exception is `app/` which wires up the `RouterProvider` internally.
+All navigation goes through `@ultra-ui-library/router`. The only exception is `app/` which wires up the `RouterProvider` internally.
 ```tsx
 // ❌
 import { useRouter } from 'next/navigation';
@@ -139,10 +139,10 @@ import Link from 'next/link';
 import { useRouter } from 'expo-router';
 
 // ✅ in shared code
-import { useRouter, usePathname, useParams, Link } from '@ui-library/router';
+import { useRouter, usePathname, useParams, Link } from '@ultra-ui-library/router';
 
 // app/-only — never in shared components
-import { RouterProvider, useRouterContext } from '@ui-library/router';
+import { RouterProvider, useRouterContext } from '@ultra-ui-library/router';
 ```
 
 Navigate by route name — never by path string:
@@ -227,7 +227,7 @@ Create a `.native.` split only when the entire implementation differs — differ
 - Both files live side by side in the same folder
 - Metro auto-picks `.native.*`. Turbopack ignores `.native.*`.
 - Max 2 `Platform.OS` checks per shared file — more than 2 means a split is needed
-- Never use `Platform.OS === 'web'` inside `dependencies/ui-library` — create a split instead
+- Never use `Platform.OS === 'web'` inside `dependencies/ultra-ui-library` — create a split instead
 
 **Anchor file** (TypeScript stub, never bundled at runtime):
 ```ts
@@ -245,7 +245,7 @@ export { useClipboard } from './useClipboard';
 
 | Hook touches | Needs split |
 |---|---|
-| `Storage` from `@ui-library` | No — library handles platform internally |
+| `Storage` from `@ultra-ui-library` | No — library handles platform internally |
 | `navigator.geolocation` | Yes |
 | `navigator.clipboard` | Yes |
 | `SpeechRecognition` | Yes |
@@ -256,14 +256,14 @@ export { useClipboard } from './useClipboard';
 
 ## 9. Storage
 
-All storage reads and writes use `Storage` from `@ui-library`. Never call `localStorage`, `sessionStorage`, or `AsyncStorage` directly — the library provides the platform abstraction.
+All storage reads and writes use `Storage` from `@ultra-ui-library`. Never call `localStorage`, `sessionStorage`, or `AsyncStorage` directly — the library provides the platform abstraction.
 ```ts
 // ❌
 localStorage.setItem('key', value);
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ✅
-import { Storage } from '@ui-library';
+import { Storage } from '@ultra-ui-library';
 await Storage.setItem('key', value);
 await Storage.getItem('key');
 await Storage.removeItem('key');
@@ -271,13 +271,13 @@ await Storage.removeItem('key');
 
 ---
 
-## 10. Library (`dependencies/ui-library`)
+## 10. Library (`dependencies/ultra-ui-library`)
 
 - Only modify when the user explicitly asks to update the library
 - Zero project-specific logic — no hardcoded routes, data, or business logic
 - Zero project-specific imports — never `@/` or `~/`
 - Everything the library needs from the project comes through props or configuration
-- Provides: UI primitives, `@ui-library/router`, `Platform`, and `Storage`
+- Provides: UI primitives, `@ultra-ui-library/router`, `Platform`, and `Storage`
 - When updating: preserve all existing exports and prop interfaces — add, don't replace
 
 ---
@@ -306,7 +306,7 @@ File structure varies per project. Always read the existing project structure be
 The only guaranteed constant across all projects is:
 ```
 dependencies/
-  ui-library/      ← protected, only modify when user explicitly asks
+  ultra-ui-library/      ← protected, only modify when user explicitly asks
 ```
 
 Shared code never lives in `app/`. Platform split files always live next to their shared counterpart.
@@ -409,21 +409,21 @@ const res = await apiClient.get('/projects');
 
 ## Self-check Before Writing Any File
 
-- [ ] `dependencies/ui-library` not modified unless the user explicitly asked — no removed exports, no changed prop interfaces
+- [ ] `dependencies/ultra-ui-library` not modified unless the user explicitly asked — no removed exports, no changed prop interfaces
 - [ ] `babel.config.js` has `react-native-reanimated/plugin` as the last plugin
 - [ ] `metro.config.js` has `withNativeWind` configured
 - [ ] `globals.css` imported in `app/layout.tsx`
 - [ ] All Next.js file-based routes removed — single `app/[[...slug]]/page.tsx` catch-all with `RouterProvider` and `initialPath`
-- [ ] No HTML tags — using `View`, `Text`, `Pressable`, `Image` from `@ui-library`
+- [ ] No HTML tags — using `View`, `Text`, `Pressable`, `Image` from `@ultra-ui-library`
 - [ ] Every `div` → `View` conversion audited for visual direction — if children were horizontal on web, `flex-row` is on the View
 - [ ] `flex` without direction → `flex-row` added to View
 - [ ] `flex-col` removed from View (redundant — View default is column)
 - [ ] Inline/float/side-by-side patterns converted to `flex-row` on View
 - [ ] `overflow-scroll` / `overflow-auto` divs → `ScrollView`
 - [ ] No `import ... from 'react-native'` in a non-`.native.` file
-- [ ] `Platform` imported from `@ui-library` not `react-native`
+- [ ] `Platform` imported from `@ultra-ui-library` not `react-native`
 - [ ] No `next/navigation`, `next/link`, or `expo-router` outside `app/`
-- [ ] Navigation uses `@ui-library/router` — `useRouter`, `usePathname`, `useParams`, `Link`
+- [ ] Navigation uses `@ultra-ui-library/router` — `useRouter`, `usePathname`, `useParams`, `Link`
 - [ ] Navigation uses route names, never path strings
 - [ ] `RouterProvider` and `useRouterContext` only in `app/`
 - [ ] No `.css` imports in shared code
@@ -431,7 +431,7 @@ const res = await apiClient.get('/projects');
 - [ ] No `StyleSheet.create` — using `className`
 - [ ] No static `style={{ }}` — using `className`
 - [ ] `transition-*`, `hover:*`, `group-hover:*`, `focus-visible:*`, `animate-*` prefixed with `web:`
-- [ ] Storage uses `Storage` from `@ui-library` — no direct `localStorage` or `AsyncStorage`
+- [ ] Storage uses `Storage` from `@ultra-ui-library` — no direct `localStorage` or `AsyncStorage`
 - [ ] No empty `catch {}` blocks
 - [ ] If 3+ `Platform.OS` checks needed → create a `.native.` split
 - [ ] Text/font classes (`text-*`, `font-*`, `leading-*`, `tracking-*`, alignment) on `Text`/`Icon` directly — not on parent `View`/`Pressable`/`Link`
