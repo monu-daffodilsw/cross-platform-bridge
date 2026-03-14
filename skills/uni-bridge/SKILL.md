@@ -1,4 +1,12 @@
-Follow these cross-platform rules for every file you create or modify. These rules ensure the code runs on both web (Next.js) and native (React Native / Expo) from a single shared codebase.
+## Foundational Rule — Cross-Platform by Default
+
+Every file you create or modify must work on both web (Next.js) and native (React Native / Expo). Before writing any code, verify that every library, API, and browser/OS feature you plan to use works on both platforms. If it doesn't — create a `.native` split. Never assume cross-platform compatibility; prove it.
+
+This rule applies to everything: UI, auth, payments, notifications, file access, sensors, deep links, analytics — no exceptions. The sections below are specific patterns for applying this principle, not an exhaustive list.
+
+---
+
+Follow the cross-platform rules below for every file you create or modify.
 
 ## Exempt Paths — Rules Are Off Here
 
@@ -79,15 +87,25 @@ React Native has no DOM. HTML tags crash on native. Replace every HTML element w
 | `svg`, `path`, `circle` | `Svg`, `Path`, `Circle` from `@ui-library` |
 | `select` | platform-split or `@ui-library` picker |
 
-When migrating `div` → `View`, apply this flex direction audit without exception:
+### Flex Direction — `View` Defaults to Column, Web Does Not
 
-| div className | Action on View |
+`View` is always a flex container with `flex-direction: column` by default. On web, `div` is a block element (not flex) and `display: flex` defaults to row. This mismatch silently breaks layouts. **Do not blindly convert — analyze the original layout intent first.**
+
+**Step 1: Determine the original visual direction.** Look at the existing web code and ask: are the children laid out horizontally (row) or vertically (column)?
+
+**Step 2: Apply the correct class on View based on the original intent:**
+
+| Original web behavior | Action on View |
 |---|---|
-| No `flex` class at all | No change — block/column behavior matches RN default |
-| `flex` but no `flex-row` or `flex-col` | **Add `flex-row`** — web flex defaults to row, must be explicit on View |
-| `flex flex-col` | Use `flex` only, **remove `flex-col`** — redundant, RN default is already column |
+| Children are horizontal (inline, flexbox row, side-by-side) | **Add `flex-row`** — View defaults to column, must override |
+| Children are vertical (block flow, stacked) | No direction class needed — matches View default |
+| `flex` but no `flex-row` or `flex-col` | **Add `flex-row`** — web flex defaults to row |
+| `flex flex-col` | **Remove `flex-col`** — redundant, View default is column |
 | `flex flex-row` | Keep as-is |
-| `flex flex-col` + other classes | Keep all other classes, **remove only `flex-col`** |
+| `inline-flex` | **Add `flex-row`** — inline-flex defaults to row on web |
+| No `flex` and children use `inline`, `inline-block`, or `float` | **Add `flex-row`** — these are horizontal patterns, View would stack them vertically |
+
+**Key insight:** The question is never "what CSS class did the div have?" — it's "what direction were the children visually flowing?" If they were side by side on web, you need `flex-row` on View regardless of how the web code achieved that layout.
 
 ---
 
@@ -286,6 +304,100 @@ Shared code never lives in `app/`. Platform split files always live next to thei
 
 ---
 
+## 13. No Reliance on CSS Inheritance
+
+React Native does not support CSS inheritance. On web, text styling classes on a parent `div` cascade to child text nodes. On native, they do not — `View`, `Pressable`, and `Link` ignore text/font classes entirely.
+
+**Rule:** Text and font classes must go directly on the `Text` or `Icon` component that renders the content — never on a parent `View`, `Pressable`, or `Link`.
+
+| Classes that must be on `Text` / `Icon` directly |
+|---|
+| `text-*` (size, color, opacity) |
+| `font-*` (weight, family) |
+| `leading-*` (line height) |
+| `tracking-*` (letter spacing) |
+| `text-left`, `text-center`, `text-right` (alignment) |
+
+```tsx
+// ❌ — text-sm and font-medium are on the parent View, won't reach Text on native
+<View className="text-sm font-medium">
+  <Text>Hello</Text>
+</View>
+
+// ❌ — text color on Pressable won't cascade to Text on native
+<Pressable className="text-primary">
+  <Text>Click me</Text>
+</Pressable>
+
+// ✅ — text classes directly on the Text component
+<View>
+  <Text className="text-sm font-medium">Hello</Text>
+</View>
+
+<Pressable>
+  <Text className="text-primary">Click me</Text>
+</Pressable>
+```
+
+---
+
+## 14. Web-Only Libraries Need `.native` Splits With Interop
+
+Any web library that has a `-native` or RN-specific counterpart needs a platform split. The `.native` file must use NativeWind `styled()` and `cssInterop` / `remapProps` so that `className` works on the native component.
+
+**Pattern:**
+1. **Web file** (`Component.tsx`) — uses the web library directly; `className` works natively via CSS.
+2. **Native file** (`Component.native.tsx`) — imports from the `-native` package, wraps with `styled()`, and applies `cssInterop` or `remapProps` with `nativeStyleToProp` so `className` maps to the correct native style prop.
+3. Both files export the same name and accept the same props.
+
+```tsx
+// icons/Icon.tsx — web
+import { SomeIcon } from 'some-icon-lib';
+export function Icon({ className }: { className?: string }) {
+  return <SomeIcon className={className} />;
+}
+
+// icons/Icon.native.tsx — native
+import { SomeIcon } from 'some-icon-lib-native';
+import { cssInterop } from 'nativewind';
+
+cssInterop(SomeIcon, {
+  className: { target: 'style', nativeStyleToProp: { color: true, width: true, height: true } },
+});
+
+export function Icon({ className }: { className?: string }) {
+  return <SomeIcon className={className} />;
+}
+```
+
+If a library has no `-native` counterpart and uses only web APIs (DOM, Canvas, etc.), it cannot be used in shared code — isolate it behind a platform split that provides a native fallback or no-op.
+
+---
+
+## 15. Centralized HTTP Client
+
+All HTTP calls go through a shared API client — never call `fetch` or `axios` directly from components, hooks, or services. The client provides:
+
+- **Base URL from config** — no hardcoded URLs in call sites
+- **Interceptors** — auth headers, token refresh, error normalization
+- **Cross-platform compatibility** — works on both web and native without `Platform.OS` checks at each call site
+
+```ts
+// ❌ — hardcoded URL, no shared auth, breaks if base changes
+const res = await fetch('https://api.example.com/projects');
+
+// ❌ — base URL in every call
+const res = await axios.get('https://api.example.com/projects', {
+  headers: { Authorization: `Bearer ${token}` },
+});
+
+// ✅ — shared client handles base URL, auth, and error handling
+import { apiClient } from '@/services/api';
+const res = await apiClient.get('/projects');
+```
+
+---
+
 ## Self-check Before Writing Any File
 
 - [ ] `dependencies/ui-library` not touched — zero files created, edited, or deleted inside it
@@ -294,9 +406,10 @@ Shared code never lives in `app/`. Platform split files always live next to thei
 - [ ] `globals.css` imported in `app/layout.tsx`
 - [ ] All Next.js file-based routes removed — single `app/[[...slug]]/page.tsx` catch-all with `RouterProvider` and `initialPath`
 - [ ] No HTML tags — using `View`, `Text`, `Pressable`, `Image` from `@ui-library`
-- [ ] Every `div` with `flex` class audited for flex direction mismatch
-- [ ] `flex` only (no direction) → `flex-row` added to View
-- [ ] `flex flex-col` → `flex-col` removed from View
+- [ ] Every `div` → `View` conversion audited for visual direction — if children were horizontal on web, `flex-row` is on the View
+- [ ] `flex` without direction → `flex-row` added to View
+- [ ] `flex-col` removed from View (redundant — View default is column)
+- [ ] Inline/float/side-by-side patterns converted to `flex-row` on View
 - [ ] `overflow-scroll` / `overflow-auto` divs → `ScrollView`
 - [ ] No `import ... from 'react-native'` in a non-`.native.` file
 - [ ] `Platform` imported from `@ui-library` not `react-native`
@@ -312,3 +425,6 @@ Shared code never lives in `app/`. Platform split files always live next to thei
 - [ ] Storage uses `Storage` from `@ui-library` — no direct `localStorage` or `AsyncStorage`
 - [ ] No empty `catch {}` blocks
 - [ ] If 3+ `Platform.OS` checks needed → create a `.native.` split
+- [ ] Text/font classes (`text-*`, `font-*`, `leading-*`, `tracking-*`, alignment) on `Text`/`Icon` directly — not on parent `View`/`Pressable`/`Link`
+- [ ] Web-only libraries with `-native` counterparts have `.native` splits with `styled()` / `cssInterop` interop
+- [ ] HTTP calls go through shared API client — no direct `fetch`/`axios` with hardcoded URLs

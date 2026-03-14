@@ -8,102 +8,45 @@ Rules are always active — applied automatically on every file you create or mo
 
 ## Install
 
-### Option 1 — CLI commands (recommended)
+Copy the `SKILL.md` file into your project's `.claude/skills/` directory. Claude Code automatically picks up skills from this location — no commands or config needed.
 
-**Global install** (available in all projects):
+### Option 1 — Project-only (recommended)
 
-```bash
-# Step 1 — Register the marketplace (one-time per machine)
-claude plugin marketplace add https://github.com/monu-daffodilsw/uni-bridge.git
-
-# Step 2 — Install the plugin
-claude plugin install uni-bridge@uni-bridge
-```
-
-**Project-only install** (only active in the current project):
+Rules apply only to this project:
 
 ```bash
-# Run from inside your project directory
-
-# Step 1 — Register the marketplace (one-time per machine)
-claude plugin marketplace add https://github.com/monu-daffodilsw/uni-bridge.git
-
-# Step 2 — Install scoped to this project only
-claude plugin install uni-bridge@uni-bridge --scope project
+# Run from your project root
+mkdir -p .claude/skills/uni-bridge
+curl -o .claude/skills/uni-bridge/SKILL.md \
+  https://raw.githubusercontent.com/monu-daffodilsw/uni-bridge/main/skills/uni-bridge/SKILL.md
 ```
 
-**Step 3 — Reopen Claude Code**
+### Option 2 — Global
 
-Skills are cached at startup. Close and reopen Claude Code after installation.
+Rules apply to all projects on your machine:
+
+```bash
+mkdir -p ~/.claude/skills/uni-bridge
+curl -o ~/.claude/skills/uni-bridge/SKILL.md \
+  https://raw.githubusercontent.com/monu-daffodilsw/uni-bridge/main/skills/uni-bridge/SKILL.md
+```
+
+### Option 3 — Manual copy
+
+1. Download `skills/uni-bridge/SKILL.md` from this repo
+2. Place it at one of these paths:
+   - **Project-only:** `<your-project>/.claude/skills/uni-bridge/SKILL.md`
+   - **Global:** `~/.claude/skills/uni-bridge/SKILL.md`
+
+### After install
+
+Restart Claude Code. The cross-platform rules are now active automatically on every file you create or modify.
 
 ---
 
 ## Update
 
-When the plugin is updated on GitHub, refresh the marketplace first to pull the latest, then update the plugin:
-
-```bash
-# Step 1 — Refresh marketplace (fetches latest from GitHub)
-claude plugin marketplace refresh uni-bridge
-
-# Step 2 — Update the plugin
-claude plugin update uni-bridge@uni-bridge
-
-# For project-only install, add --scope project to step 2
-claude plugin update uni-bridge@uni-bridge --scope project
-
-# Step 3 — Reopen Claude Code to reload updated skills
-```
-
-If `marketplace refresh` is not available, remove and re-add instead:
-
-```bash
-claude plugin marketplace remove uni-bridge
-claude plugin marketplace add https://github.com/monu-daffodilsw/uni-bridge.git
-claude plugin update uni-bridge@uni-bridge
-```
-
----
-
-### Option 2 — Manual settings
-
-**Global** — edit `~/.claude/settings.json`:
-
-```json
-{
-  "enabledPlugins": {
-    "uni-bridge@uni-bridge": true
-  },
-  "extraKnownMarketplaces": {
-    "uni-bridge": {
-      "source": {
-        "source": "git",
-        "url": "https://github.com/monu-daffodilsw/uni-bridge.git"
-      }
-    }
-  }
-}
-```
-
-**Project-only** — create `.claude/settings.json` in your project root:
-
-```json
-{
-  "enabledPlugins": {
-    "uni-bridge@uni-bridge": true
-  },
-  "extraKnownMarketplaces": {
-    "uni-bridge": {
-      "source": {
-        "source": "git",
-        "url": "https://github.com/monu-daffodilsw/uni-bridge.git"
-      }
-    }
-  }
-}
-```
-
-Then reopen Claude Code.
+Re-run the `curl` command from the install step to pull the latest `SKILL.md` from GitHub, then restart Claude Code.
 
 ---
 
